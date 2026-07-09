@@ -1,0 +1,41 @@
+[Unit]
+Description=TAK Certificate HTTP Download Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# INSTALL: set User and WorkingDirectory to match your deploy path
+User=tak
+WorkingDirectory=/opt/tak_certs_http
+# Leading '-' = optional file (systemd dialect; not shell). Keep config.env as simple KEY=value.
+EnvironmentFile=-/opt/tak_certs_http/config.env
+ExecStart=/opt/tak_certs_http/start.sh
+Restart=on-failure
+RestartSec=3
+
+# Hardening tuned for RHEL 8 / systemd 239 (directives known to work there).
+# NoNewPrivileges covers much of the RestrictSUIDSGID intent (that key needs systemd ≥242).
+# MemoryDenyWriteExecute is intentionally omitted: portable CPython 3.12+ often needs
+# temporary WX mappings and will fail under MDWE.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectHostname=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+# Package tree read-only; only certs/ needs write so start.sh can mkdir -p.
+# If TAK_CERTS_ALLOW_EXTERNAL_DIR=1 points outside this tree, install-service.sh
+# appends that path to ReadWritePaths (or edit the unit / use foreground start.sh).
+ReadOnlyPaths=/opt/tak_certs_http
+ReadWritePaths=/opt/tak_certs_http/certs
+
+[Install]
+WantedBy=multi-user.target

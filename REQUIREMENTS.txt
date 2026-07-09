@@ -1,0 +1,14 @@
+# Offline-only TAK certs HTTP package — runtime requirements
+#
+# Application pip packages: NONE (Python standard library only)
+# OS package manager: NOT REQUIRED
+#
+# Bundled:
+#   python/linux-x86_64/python   — CPython 3.12.13 (glibc, x86_64)
+#   python/linux-aarch64/python  — CPython 3.12.13 (glibc, aarch64)
+#   Source: astral-sh/python-build-standalone 20260623 install_only_stripped
+#
+# Host requirements:
+#   - Linux glibc (RHEL 8.1 / glibc 2.28 OK; not Alpine/musl)
+#   - x86_64 or aarch64
+#   - Optional: systemd for install-service.sh
