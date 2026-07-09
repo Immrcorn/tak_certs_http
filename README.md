@@ -224,11 +224,20 @@ cd /opt/tak_certs_http
 ./show-qr.sh
 ```
 
-Writes:
+When run interactively, you are prompted for which format(s) to write:
 
-- `certs/download-qr.html` — open in a browser or email to users
-- `certs/download-qr.png` — image for chat/print
-- `certs/download-qr.svg` — vector
+- `h` — html (browser handout)
+- `p` — png (image for chat/print)
+- `s` — svg (vector)
+
+Enter one or more letters (`h`, `p`, `s`), comma-separated names, or `all`.
+
+For scripts or non-interactive use, pass format flags (at least one required):
+
+```bash
+./show-qr.sh --png
+./show-qr.sh --html --svg
+```
 
 **URL auto-detection** uses the server’s routable IP when `TAK_CERTS_HOST=0.0.0.0`.  
 If auto-detect picks the wrong address, set a fixed URL in `config.env`:
@@ -336,6 +345,28 @@ sudo firewall-cmd --reload
 
 - Foreground: **Ctrl+C**
 - Service: `sudo systemctl stop tak-certs-http`
+
+---
+
+## Uninstall service
+
+There is no uninstall script. To remove the systemd unit only (package files under `/opt/tak_certs_http` are left in place):
+
+```bash
+sudo systemctl stop tak-certs-http
+sudo systemctl disable tak-certs-http
+sudo rm /etc/systemd/system/tak-certs-http.service
+sudo systemctl daemon-reload
+```
+
+Confirm removal:
+
+```bash
+systemctl status tak-certs-http
+# should report "could not be found" or inactive/disabled
+```
+
+To run the server again without systemd, use `./start.sh` from the package directory.
 
 ---
 

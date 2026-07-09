@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Generate a QR code for the active TAK cert download URL.
-# Uses bundled Python (same as start.sh). Writes certs/download-qr.{svg,png,html}.
+# Uses bundled Python (same as start.sh). Prompts for format(s) or use --html/--png/--svg.
 
 set -euo pipefail
 

@@ -21,6 +21,8 @@ from qrcodegen import QrCode
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 DEFAULT_PORT = 18200
+FORMAT_CHOICES = frozenset({"html", "png", "svg"})
+FORMAT_LETTERS = {"h": "html", "p": "png", "s": "svg"}
 
 
 def env_or(key: str, default: str) -> str:
@@ -251,6 +253,65 @@ def default_output_dir() -> Path:
     return p
 
 
+def _parse_format_input(raw: str) -> set[str] | None:
+    text = raw.strip().lower()
+    if text in ("all", "a", "*"):
+        return set(FORMAT_CHOICES)
+
+    selected: set[str] = set()
+    tokens = [part for part in text.replace(" ", ",").split(",") if part.strip()]
+    for token in tokens:
+        token = token.strip()
+        if token in FORMAT_CHOICES:
+            selected.add(token)
+        elif token and all(ch in FORMAT_LETTERS for ch in token):
+            for ch in token:
+                selected.add(FORMAT_LETTERS[ch])
+        else:
+            return None
+    return selected or None
+
+
+def prompt_formats() -> set[str]:
+    print()
+    print("Which format(s)?")
+    print("  h — html (browser handout)")
+    print("  p — png  (image for chat/print)")
+    print("  s — svg  (vector)")
+    print("Enter h/p/s (comma-separated) or all:")
+    while True:
+        try:
+            raw = input("> ")
+        except EOFError:
+            raise SystemExit(
+                "ERROR: no input. Use --html, --png, and/or --svg for non-interactive use."
+            ) from None
+        selected = _parse_format_input(raw)
+        if selected is not None:
+            return selected
+        print("Invalid choice. Use h, p, s (e.g. h,p or hps) or all")
+
+
+def resolve_formats(args: argparse.Namespace) -> set[str]:
+    """Pick output format(s) from flags, prompt, or error when non-interactive."""
+    if args.no_files:
+        return set()
+
+    flagged = {fmt for fmt in FORMAT_CHOICES if getattr(args, fmt)}
+    if flagged:
+        return flagged
+
+    if sys.stdin.isatty():
+        return prompt_formats()
+
+    print(
+        "ERROR: non-interactive session. Specify one or more of: "
+        "--html, --png, --svg",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Generate a QR code for the TAK cert HTTP download URL."
@@ -271,7 +332,22 @@ def main() -> int:
     parser.add_argument(
         "--out-dir",
         type=Path,
-        help="Directory for SVG/PNG/HTML output (default: certs/)",
+        help="Directory for selected format output (default: certs/)",
+    )
+    parser.add_argument(
+        "--html",
+        action="store_true",
+        help="Write HTML handout (non-interactive)",
+    )
+    parser.add_argument(
+        "--png",
+        action="store_true",
+        help="Write PNG image (non-interactive)",
+    )
+    parser.add_argument(
+        "--svg",
+        action="store_true",
+        help="Write SVG image (non-interactive)",
     )
     parser.add_argument(
         "--terminal",
@@ -281,7 +357,7 @@ def main() -> int:
     parser.add_argument(
         "--no-files",
         action="store_true",
-        help="Do not write SVG/PNG/HTML files",
+        help="Do not write output files",
     )
     parser.add_argument(
         "--open",
@@ -308,18 +384,22 @@ def main() -> int:
         print_terminal(qr)
         print()
 
-    if not args.no_files:
+    formats = resolve_formats(args)
+    if formats:
         out_dir = args.out_dir or default_output_dir()
         out_dir.mkdir(parents=True, exist_ok=True)
-        svg_path = out_dir / "download-qr.svg"
-        png_path = out_dir / "download-qr.png"
-        html_path = out_dir / "download-qr.html"
-        svg_path.write_text(svg, encoding="utf-8")
-        write_png(png_path, qr)
-        write_html(html_path, url, svg)
-        print(f"  SVG : {svg_path}")
-        print(f"  PNG : {png_path}")
-        print(f"  HTML: {html_path}")
+        if "svg" in formats:
+            svg_path = out_dir / "download-qr.svg"
+            svg_path.write_text(svg, encoding="utf-8")
+            print(f"  SVG : {svg_path}")
+        if "png" in formats:
+            png_path = out_dir / "download-qr.png"
+            write_png(png_path, qr)
+            print(f"  PNG : {png_path}")
+        if "html" in formats:
+            html_path = out_dir / "download-qr.html"
+            write_html(html_path, url, svg)
+            print(f"  HTML: {html_path}")
         if args.open:
             print("  (Share HTML or PNG with users.)")
 
