@@ -234,7 +234,7 @@ DEST="$(canonicalize_dest "$DEST")" || exit 1
 assert_dest_safe "$DEST" "pre-chown"
 
 chown -R "$RUN_USER:" "$DEST" 2>/dev/null || chown -R "$RUN_USER" "$DEST"
-chmod +x "$DEST/start.sh" "$DEST/serve.py" "$DEST/install-service.sh" "$DEST/show-qr.sh" "$DEST/gen_qr.py" 2>/dev/null || true
+chmod +x "$DEST/start.sh" "$DEST/serve.py" "$DEST/install-service.sh" "$DEST/create-qr.sh" "$DEST/gen_qr.py" 2>/dev/null || true
 
 UNIT_SRC="$DEST/systemd/tak-certs-http.service"
 UNIT_DST="/etc/systemd/system/tak-certs-http.service"
