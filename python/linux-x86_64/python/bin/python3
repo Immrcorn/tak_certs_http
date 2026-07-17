@@ -1,1 +1,2 @@
-python3.12
+#!/bin/sh
+exec "$(dirname "$0")/python3.12" "$@"

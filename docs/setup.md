@@ -19,13 +19,11 @@ This guide assumes the canonical install path `/opt/tak_certs_http`. All steps a
 
 ## Getting the package
 
-**From GitHub:** clone or download this repository / release tarball. Transfer the **entire tree** to the target host via scp, sneakernet, or internal file share.
-
-Make sure you place the tak_certs_http/ folder into the /opt/ directory.
+**From GitHub:** clone or download this repository / release tarball. Transfer the **entire tree** to the Linux host and place it at `/opt/tak_certs_http`.
 
 ```bash
-# scp the tarball to the host and release it to the /opt directory
-scp -r tak_certs_http.tgz user@host:~/
+# scp the tarball to the host and extract into /opt
+scp tak_certs_http.tgz user@host:~/
 sudo tar xzf ~/tak_certs_http.tgz -C /opt
 cd /opt/tak_certs_http
 ```
@@ -44,8 +42,8 @@ cd /opt/tak_certs_http
 cd /opt/tak_certs_http
 # This command gives you appropriate permissions to run the scripts
 sudo chmod +x start.sh serve.py install-service.sh create-qr.sh gen_qr.py
-# This command gives the python packages appropriate permissions to run
-find python -type f \( -name 'python3*' -o -name 'python' \) -exec sudo chmod a+x {} \;
+# This command gives the bundled interpreter permission to run
+sudo chmod a+x python/linux-*/python/bin/python3.12
 ```
 
 
@@ -83,7 +81,7 @@ Start the server in the **foreground** to confirm everything works:
 Expected output:
 
 ```text
-Using Python: /opt/tak_certs_http/python/linux-x86_64/python/bin/python3 (Python 3.12.x)
+Using Python: /opt/tak_certs_http/python/linux-x86_64/python/bin/python3.12 (Python 3.12.x)
 NOTE: start.sh only RUNS the download server...
 === TAK Certificate HTTP Server ===
   Serving : /opt/tak_certs_http/certs

@@ -31,10 +31,53 @@ mkdir -p "$CERTS_PATH"
 export TAK_CERTS_HOST TAK_CERTS_PORT TAK_CERTS_DIR
 export TAK_CERTS_ALLOW_EXTERNAL_DIR="${TAK_CERTS_ALLOW_EXTERNAL_DIR:-}"
 
+# #region agent log
+_agent_debug_log() {
+  local hypothesis_id="$1" message="$2" data_json="$3"
+  local log_file="${TAK_CERTS_DEBUG_LOG:-$ROOT/.cursor/debug-aed43a.log}"
+  local ts
+  ts="$(date +%s)000" 2>/dev/null || ts=0
+  mkdir -p "$(dirname "$log_file")" 2>/dev/null || true
+  [[ -n "$data_json" ]] || data_json='{}'
+  printf '{"sessionId":"aed43a","runId":"%s","hypothesisId":"%s","location":"start.sh","message":"%s","data":%s,"timestamp":%s}\n' \
+    "${TAK_CERTS_DEBUG_RUN:-pre-fix}" "$hypothesis_id" "$message" "$data_json" "$ts" >>"$log_file" 2>/dev/null || true
+  # Also mirror to workspace path when present (Cursor debug ingest)
+  if [[ "$log_file" != "/Users/corn/Projects/tak_certs_http/.cursor/debug-aed43a.log" ]]; then
+    printf '{"sessionId":"aed43a","runId":"%s","hypothesisId":"%s","location":"start.sh","message":"%s","data":%s,"timestamp":%s}\n' \
+      "${TAK_CERTS_DEBUG_RUN:-pre-fix}" "$hypothesis_id" "$message" "$data_json" "$ts" \
+      >>"/Users/corn/Projects/tak_certs_http/.cursor/debug-aed43a.log" 2>/dev/null || true
+  fi
+}
+# #endregion
+
 python_version_ok() {
   local bin="$1"
-  [[ -x "$bin" ]] || return 1
-  "$bin" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 7) else 1)' 2>/dev/null
+  local probe_err rc=0
+  # #region agent log
+  local exists=0 executable=0
+  [[ -e "$bin" ]] && exists=1
+  [[ -x "$bin" ]] && executable=1
+  # #endregion
+  [[ -x "$bin" ]] || {
+    # #region agent log
+    _agent_debug_log "A" "python_version_ok not executable" "{\"bin\":\"$bin\",\"exists\":$exists,\"executable\":$executable}"
+    # #endregion
+    return 1
+  }
+  # Capture probe failure reason (normally discarded)
+  probe_err="$("$bin" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 7) else 1)' 2>&1)" || rc=$?
+  if [[ $rc -ne 0 ]]; then
+    # #region agent log
+    probe_err="${probe_err//$'\n'/; }"
+    probe_err="${probe_err//\"/\'}"
+    _agent_debug_log "B_E" "python_version_ok probe failed" "{\"bin\":\"$bin\",\"rc\":$rc,\"err\":\"$probe_err\",\"ld\":\"${LD_LIBRARY_PATH:-}\"}"
+    # #endregion
+    return 1
+  fi
+  # #region agent log
+  _agent_debug_log "A" "python_version_ok ok" "{\"bin\":\"$bin\"}"
+  # #endregion
+  return 0
 }
 
 # Resolve arch-specific portable CPython shipped with this offline package.
@@ -55,7 +98,10 @@ bundled_python_home() {
 }
 
 pick_python() {
-  local candidate home py
+  local home py with_ld_err with_ld_rc
+  # #region agent log
+  _agent_debug_log "C_D" "pick_python start" "{\"root\":\"$ROOT\",\"arch\":\"$(uname -m)\",\"uname_s\":\"$(uname -s)\",\"x86_tree\":$([ -d "$ROOT/python/linux-x86_64/python/bin" ] && echo 1 || echo 0),\"aarch_tree\":$([ -d "$ROOT/python/linux-aarch64/python/bin" ] && echo 1 || echo 0)}"
+  # #endregion
   # Explicit override always wins
   if [[ -n "${TAK_CERTS_PYTHON:-}" ]]; then
     if python_version_ok "$TAK_CERTS_PYTHON"; then
@@ -74,39 +120,30 @@ pick_python() {
     return 0
   fi
 
-  # Offline default: bundled portable CPython for this arch
+  # Offline default: the bundled portable CPython binary for this arch.
+  # The package ships only the real interpreter (python3.12) — no python/python3
+  # symlinks — so this is the single source of truth.
   if home="$(bundled_python_home 2>/dev/null)"; then
-    py="$home/bin/python3"
+    py="$home/bin/python3.12"
+    # #region agent log
+    with_ld_rc=0
+    if [[ -x "$py" ]]; then
+      with_ld_err="$(LD_LIBRARY_PATH="${home}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" "$py" -c 'import sys; print(sys.version)' 2>&1)" || with_ld_rc=$?
+      with_ld_err="${with_ld_err//$'\n'/; }"
+      with_ld_err="${with_ld_err//\"/\'}"
+      _agent_debug_log "B" "probe with LD_LIBRARY_PATH" "{\"py\":\"$py\",\"rc\":$with_ld_rc,\"out\":\"$with_ld_err\"}"
+    fi
+    # #endregion
     if python_version_ok "$py"; then
       export LD_LIBRARY_PATH="${home}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
       echo "$py"
       return 0
     fi
-    # Common alternate layout (flat python/bin)
-    py="$home/bin/python"
-    if python_version_ok "$py"; then
-      export LD_LIBRARY_PATH="${home}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-      echo "$py"
-      return 0
-    fi
+  else
+    # #region agent log
+    _agent_debug_log "C" "bundled_python_home failed" "{\"arch\":\"$(uname -m)\"}"
+    # #endregion
   fi
-
-  # Legacy flat layouts under package root
-  for candidate in \
-    "$ROOT/python/bin/python3" \
-    "$ROOT/runtime/bin/python3" \
-    "$ROOT/cpython/bin/python3" \
-    "$ROOT/portable-python/bin/python3"
-  do
-    if python_version_ok "$candidate"; then
-      base="$(cd "$(dirname "$candidate")/.." && pwd)"
-      if [[ -d "$base/lib" ]]; then
-        export LD_LIBRARY_PATH="${base}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-      fi
-      echo "$candidate"
-      return 0
-    fi
-  done
 
   # Offline package: do NOT silently fall back to system python3 (often 3.6 on RHEL 8.1).
   # Allow only if TAK_CERTS_ALLOW_SYSTEM_PYTHON=1 for lab use.
@@ -120,6 +157,9 @@ pick_python() {
       return 0
     fi
   fi
+  # #region agent log
+  _agent_debug_log "A_E" "pick_python exhausted" "{\"allow_system\":\"${TAK_CERTS_ALLOW_SYSTEM_PYTHON:-}\"}"
+  # #endregion
   return 1
 }
 
@@ -131,14 +171,20 @@ if [[ "${1:-}" == "--version" ]]; then
     exit 0
   fi
   echo "Python: (not found)"
+  # #region agent log
+  _agent_debug_log "A_E" "version cmd not found" "{}"
+  # #endregion
   exit 1
 fi
 
 if ! PY="$(pick_python)"; then
+  # #region agent log
+  _agent_debug_log "A_E" "start failed no python" "{}"
+  # #endregion
   echo "ERROR: need the bundled portable Python ≥ 3.7 (offline package)." >&2
   echo "  Expected one of:" >&2
-  echo "    $ROOT/python/linux-x86_64/python/bin/python3" >&2
-  echo "    $ROOT/python/linux-aarch64/python/bin/python3" >&2
+  echo "    $ROOT/python/linux-x86_64/python/bin/python3.12" >&2
+  echo "    $ROOT/python/linux-aarch64/python/bin/python3.12" >&2
   echo "  Arch on this host: $(uname -m)" >&2
   echo "  Override: TAK_CERTS_PYTHON=/path/to/python3" >&2
   echo "  Lab only: TAK_CERTS_ALLOW_SYSTEM_PYTHON=1 (requires system Python ≥ 3.7)" >&2

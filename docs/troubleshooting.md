@@ -75,7 +75,7 @@ cd /opt/tak_certs_http
 
 # Tree complete?
 ls -la start.sh serve.py config.env
-ls -la python/linux-$(uname -m)/python/bin/python3
+ls -la python/linux-$(uname -m)/python/bin/python3.12
 
 # Bundled interpreter (not system 3.6)?
 ./start.sh --version

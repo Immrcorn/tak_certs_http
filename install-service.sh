@@ -219,15 +219,16 @@ if [[ ! -f "$DEST/serve.py" || ! -f "$DEST/start.sh" ]]; then
   exit 1
 fi
 
-# Offline package must include portable Python for at least one Linux arch
-if [[ ! -x "$DEST/python/linux-x86_64/python/bin/python3" \
-   && ! -x "$DEST/python/linux-aarch64/python/bin/python3" ]]; then
-  echo "ERROR: offline portable Python missing under $DEST/python/linux-*/python/bin/python3" >&2
+# Offline package must include the bundled portable interpreter for at least one Linux arch.
+# The package ships only python3.12 (no python/python3 symlinks).
+if [[ ! -x "$DEST/python/linux-x86_64/python/bin/python3.12" \
+   && ! -x "$DEST/python/linux-aarch64/python/bin/python3.12" ]]; then
+  echo "ERROR: offline portable Python missing under $DEST/python/linux-*/python/bin/python3.12" >&2
   echo "  This package is offline-only; re-copy the full tree (do not strip python/)." >&2
   exit 1
 fi
 # Ensure interpreter bits survived rsync/cp
-find "$DEST/python" -type f \( -name 'python3*' -o -name 'python' \) -exec chmod a+x {} \; 2>/dev/null || true
+find "$DEST/python" -type f -name 'python3.12' -exec chmod a+x {} \; 2>/dev/null || true
 
 # Re-canonicalize after copy (resolves symlinks if DEST itself was replaced)
 DEST="$(canonicalize_dest "$DEST")" || exit 1
