@@ -60,7 +60,7 @@ See [docs/setup.md](docs/setup.md) for the full walkthrough.
 
 **From GitHub:** clone or download this repository / release tarball. Transfer the **entire tree** to the target host via scp, sneakernet, or internal file share.
 
-Make sure you place the tak_certs_http/ folder into the /opt/ directory.
+Make sure you place the `tak_certs_http/` folder into the `/opt/` directory.
 
 ```bash
 # Example: copy full tree to target host
