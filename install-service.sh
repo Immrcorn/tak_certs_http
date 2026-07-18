@@ -197,7 +197,12 @@ if [[ "$ROOT_CANON" == "$DEST" ]]; then
 else
   echo "  Mode: copy $ROOT_CANON -> $DEST"
   if command -v rsync >/dev/null 2>&1; then
-    rsync -a --exclude '.DS_Store' "$ROOT_CANON/" "$DEST/"
+    rsync -a \
+      --exclude '.DS_Store' \
+      --exclude '.cursor' \
+      --exclude '.git' \
+      --exclude '__pycache__' \
+      "$ROOT_CANON/" "$DEST/"
   else
     # Guard again in case paths compare unequal as strings but are same inode
     if [[ -e "$ROOT_CANON" && -e "$DEST" ]] \
