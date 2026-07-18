@@ -21,8 +21,12 @@ This guide assumes the canonical install path `/opt/tak_certs_http`. All steps a
 
 **From GitHub:** clone or download this repository / release tarball. Transfer the **entire tree** to the Linux host and place it at `/opt/tak_certs_http`.
 
+
+
+Use WinSCP to transfer the unzipped folder into /opt or scp it like below.
+
 ```bash
-# scp the tarball to the host and extract into /opt
+# scp the tarball to the host user home and extract into /opt
 scp tak_certs_http.tgz user@host:~/
 sudo tar xzf ~/tak_certs_http.tgz -C /opt
 cd /opt/tak_certs_http
@@ -50,7 +54,7 @@ sudo chmod a+x python/linux-*/python/bin/python3.12
 
 ### Step 2 — Configure
 
-Edit `config.env` if you need a non-default port, bind address, or public URL for QR handouts:
+**If** you need a non-default port, bind address, or public URL for QR handouts, edit `config.env` :
 
 ```bash
 sudo vi config.env
@@ -60,10 +64,10 @@ RECOMMENDED: Full reference: [configuration.md](configuration.md).
 
 ### Step 3 — Add cert packages
 
-Copy pre-built user packages into `certs/`. No server restart is needed when adding files later.
+Copy pre-built user packages into `certs/`. No server restart is needed when adding files later. 
 
 ```bash
-sudo cp /path/to/*.zip /opt/tak_certs_http/certs/
+sudo cp /path/to/ATAK.p12 /opt/tak_certs_http/certs/
 ```
 
 Supported types include `.zip`, `.p12`, `.pfx`, `.pem`, `.crt`, and others — see [configuration.md](configuration.md).
