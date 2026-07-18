@@ -23,3 +23,9 @@ certs/*
 certs/download-qr.html
 certs/download-qr.png
 certs/download-qr.svg
+
+# Local development / IDE (never ship to offline RHEL hosts)
+.cursor/
+
+# Local development
+.cursor/
